@@ -1,4 +1,5 @@
 from lexer import Lexer
+from token_type import TokenType
 
 
 def main():
@@ -17,16 +18,16 @@ def main():
     #         LET nums = nums - 1
     #     ENDWHILE
     #     """
-    source_code = """PRINT jjj  """
+    source_code = "IF + - 123 foo * THEN /"
     
     lexer_comp  = Lexer(source=source_code)
 
 
     token = lexer_comp.get_token()
     while True:
-        if token == "\0":
-            break
         print(token)
+        if token.token_type == TokenType.EOF :
+            break
         token = lexer_comp.get_token()
 
 main()
