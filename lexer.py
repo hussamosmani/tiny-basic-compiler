@@ -15,6 +15,7 @@ from token_type import Token, TokenType
 # Labels and goto
 # Comments
 
+
 EMPTY_STRING = " "
 NEWLINE = "\n"
 
@@ -51,12 +52,14 @@ class Lexer:
 
         if self.source[pntr] == '"':
             start_indx = pntr
+            pntr+=1
             while self.source[pntr] != '"':
                 if self.source[pntr] == '\r' or self.source[pntr] == '\n' or self.source[pntr] == '\t' or self.source[pntr] == '\\' or self.source[pntr] == '%':
                     self.abort("Illegal character in string.")
                 pntr+=1
             pntr+=1
-            token = '"' + self.source[start_indx:pntr] + '"'
+            token = self.source[start_indx:pntr]
+            self.curr_char_index = pntr
         
         else:
             while self.source[pntr] != EMPTY_STRING and self.source[pntr] != NEWLINE:
