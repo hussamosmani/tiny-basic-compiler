@@ -1,21 +1,28 @@
 import sys
-from lexer import Lexer
-from token_type import TokenType
+from main.emitter import Emitter
+from main.lexer import Lexer
+from main.token_type import TokenType
 
 
 class Parser:
 
-    def __init__(self, lexer: Lexer):
+    def __init__(self, lexer: Lexer, emitter: Emitter):
         self.lexer = lexer
+        self.emitter = emitter
         self.token = None
+        self.ident_set = set()
 
     def program(self):
         print("BEGIN PROGRAM")
 
+        self.emitter.emit_header("#include <stdio.h>")
+        self.emitter.emit_header("int main(void){")
+
         self.get_next_token()
         while self.token.token_type != TokenType.EOF:
             self.statement()
-
+        self.emitter.emit_line("return 0;")
+        self.emitter.emit_line("}")
         print("END PARSING")
 
     def statement(self):
@@ -26,6 +33,7 @@ class Parser:
             self.get_next_token()
 
             if self.token.token_type == TokenType.STRING:
+                self.emitter.emit_line('printf("' + self.token.token_text + '\\n");')
                 self.get_next_token()
             else:
                 self.expression()
@@ -35,45 +43,49 @@ class Parser:
 
             self.get_next_token()
 
+            # possible error here
+            if self.token.token_text not in self.ident_set:
+                self.ident_set.add(self.token.token_text)
+                self.emitter.emit_header("float " + self.token.token_text + ";")
+
+            self.emitter.emit(self.token.token_text)
             self.check_if_token_is(TokenType.IDENT)
             self.check_if_token_is(TokenType.EQ)
+            self.emitter.emit(" =")
 
             self.expression()
+            self.emitter.emit_line(";")
 
         elif self.token.token_type == TokenType.IF:
             print("IF")
+            self.emitter.emit("if (")
 
             self.get_next_token()
+            self.comparison()
             self.check_if_token_is(TokenType.THEN)
+
+            self.emitter.emit_line("){")
+            self.nl()
 
             while self.token.token_type != TokenType.ENDIF:
                 self.statement()
             self.check_if_token_is(TokenType.ENDIF)
-
-        elif self.token.token_type == TokenType.INPUT:
-            print("INPUT")
-
-            self.get_next_token()
-            self.check_if_token_is(TokenType.IDENT)
+            self.emitter.emit_line("}")
 
         elif self.token.token_type == TokenType.WHILE:
             print("WHILE")
 
+            self.emitter.emit("while(")
+
             self.get_next_token()
             self.comparison()
+            self.emitter.emit_line("){")
             self.check_if_token_is(TokenType.REPEAT)
             self.nl()
             while self.token.token_type != TokenType.ENDWHILE:
                 self.statement()
             self.check_if_token_is(TokenType.ENDWHILE)
-
-        elif self.token.token_type == TokenType.LABEL:
-            print("LABEL")
-            self.get_next_token()
-
-        elif self.token.token_type == TokenType.GOTO:
-            print("GOTO")
-            self.get_next_token()
+            self.emitter.emit_line("}")
 
         else:
             self.abort(f"Unrecognised token: {self.token}")
@@ -90,6 +102,7 @@ class Parser:
             or self.token.token_type == TokenType.LTEQ
             or self.token.token_type == TokenType.EQEQ
         ):
+            self.emitter.emit(self.token.token_text)
             self.get_next_token()
             self.expression()
 
@@ -101,6 +114,7 @@ class Parser:
             self.token.token_type == TokenType.PLUS
             or self.token.token_type == TokenType.MINUS
         ):
+            self.emitter.emit(self.token.token_text)
             self.get_next_token()
             self.term()
 
@@ -112,6 +126,7 @@ class Parser:
             self.token.token_type == TokenType.DIVIDE
             or self.token.token_type == TokenType.MULTIPLY
         ):
+            self.emitter.emit(self.token.token_text)
             self.get_next_token()
             self.unrary()
 
@@ -121,6 +136,7 @@ class Parser:
             self.token.token_type == TokenType.PLUS
             or self.token.token_type == TokenType.MINUS
         ):
+            self.emitter.emit(self.token.token_text)
             self.get_next_token()
         self.primary()
 
@@ -130,6 +146,7 @@ class Parser:
             self.token.token_type == TokenType.NUMBER
             or self.token.token_type == TokenType.IDENT
         ):
+            self.emitter.emit(self.token.token_text)
             self.get_next_token()
         else:
             self.abort(f"Invalid token at: {self.token}")
